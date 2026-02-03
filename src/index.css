@@ -1,0 +1,24 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+body {
+  background-color: theme('colors.cyber.dark');
+  color: theme('colors.cyber.text');
+  font-family: theme('fontFamily.sans');
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: theme('colors.cyber.dark');
+}
+::-webkit-scrollbar-thumb {
+  background: theme('colors.cyber.border');
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: theme('colors.cyber.primary');
+}

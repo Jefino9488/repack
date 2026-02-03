@@ -1,0 +1,69 @@
+name: Repack ROM
+
+on:
+  workflow_dispatch:
+    inputs:
+      rom_url:
+        description: 'Direct Link to Recovery ROM'
+        required: true
+      device_name:
+        description: 'Device/Output Name (e.g. spes)'
+        required: true
+      firmware_url:
+        description: 'Direct Link to Firmware (Optional)'
+        required: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - name: Maximize Build Space
+        uses: easimon/maximize-build-space@master
+        with:
+          swap-size-mb: 8192
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set Git User Info
+        run: |
+          git config user.email "bot@github.com"
+          git config user.name "GitHub Actions Bot"
+        shell: bash
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 aria2 p7zip-full zstd dos2unix libxml2-utils
+
+      - name: Run Repack Script
+        env:
+          ROM_URL: ${{ inputs.rom_url }}
+          DEVICE_NAME: ${{ inputs.device_name }}
+          FIRMWARE_URL: ${{ inputs.firmware_url }}
+        run: |
+          echo "Repacking ROM for $DEVICE_NAME"
+          chmod +x "$GITHUB_WORKSPACE/scripts/repack.sh"
+          # Usage: repack.sh URL WORKSPACE DEVICE KEY FIRMWARE_URL
+          # Passing "" for KEY (arg 4) as it was removed/unused
+          sudo bash "$GITHUB_WORKSPACE/scripts/repack.sh" "$ROM_URL" "$GITHUB_WORKSPACE" "$DEVICE_NAME" "" "$FIRMWARE_URL"
+          
+          if [ $? -ne 0 ]; then
+            echo "Error: Build failed."
+            exit 1
+          fi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.device_name }}_fastboot
+          path: ${{ github.workspace }}/zip/${{ inputs.device_name }}_fastboot.zip
+          compression-level: 0
+          retention-days: 1
