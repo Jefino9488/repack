@@ -7,11 +7,21 @@ on:
         description: 'Direct Link to Recovery ROM'
         required: true
       device_name:
-        description: 'Device/Output Name (e.g. spes)'
+        description: 'Device/Output Name (e.g. xaga)'
+        required: true
+      compatible_list:
+        description: 'Compatible devices (comma-separated, e.g. xaga,xagain,xaga_pro)'
         required: true
       firmware_url:
         description: 'Direct Link to Firmware (Optional)'
         required: false
+      preloader_url:
+        description: 'Direct Link to Preloader file (Optional, if not in ROM)'
+        required: false
+      disable_verity:
+        description: 'Disable verity/verification on vbmeta (yes/no)'
+        required: false
+        default: 'yes'
 
 jobs:
   build:
@@ -47,17 +57,26 @@ jobs:
         env:
           ROM_URL: ${{ inputs.rom_url }}
           DEVICE_NAME: ${{ inputs.device_name }}
+          COMPATIBLE_LIST: ${{ inputs.compatible_list }}
           FIRMWARE_URL: ${{ inputs.firmware_url }}
+          PRELOADER_URL: ${{ inputs.preloader_url }}
+          DISABLE_VERITY: ${{ inputs.disable_verity }}
         run: |
           echo "Repacking ROM for $DEVICE_NAME"
           chmod +x "$GITHUB_WORKSPACE/scripts/repack.sh"
-          # Usage: repack.sh URL WORKSPACE DEVICE KEY FIRMWARE_URL
-          # Passing "" for KEY (arg 4) as it was removed/unused
-          sudo bash "$GITHUB_WORKSPACE/scripts/repack.sh" "$ROM_URL" "$GITHUB_WORKSPACE" "$DEVICE_NAME" "" "$FIRMWARE_URL"
+          sudo bash "$GITHUB_WORKSPACE/scripts/repack.sh"
           
           if [ $? -ne 0 ]; then
             echo "Error: Build failed."
             exit 1
+          fi
+
+      - name: Display Download Link
+        run: |
+          if [ -f "$GITHUB_WORKSPACE/gofile_link.txt" ]; then
+            echo "## 🚀 Download Link" >> $GITHUB_STEP_SUMMARY
+            echo "Your file is ready: [Download from Gofile.io]($(cat $GITHUB_WORKSPACE/gofile_link.txt))" >> $GITHUB_STEP_SUMMARY
+            echo "Direct link: $(cat $GITHUB_WORKSPACE/gofile_link.txt)" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Upload Artifact

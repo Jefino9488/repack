@@ -1,11 +1,5 @@
-# Task Checklist: ROM Repacker System
+# Tasks
 
-- [/] **Script Implementation**
-    - [ ] Create `scripts/repack.sh` (Ported from `aospFastboot.sh`, removed Magisk)
-- [ ] **Workflow Implementation**
-    - [ ] Create `.github/workflows/repack.yml`
-- [ ] **UI Implementation**
-    - [ ] Initialize Vite + React + TypeScript in root
-    - [ ] Install TailwindCSS
-    - [ ] Create `src/App.tsx` with form and GitHub API integration
-    - [ ] Style with "Dark/Cyber" aesthetic
+- [x] Implement Gofile upload in `repack.sh`
+- [x] Update `repack.yml` to display download link
+- [/] Verify changes
