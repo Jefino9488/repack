@@ -11,8 +11,10 @@ export default function App() {
     const [formData, setFormData] = useState({
         rom_url: '',
         device_name: '',
+        compatible_list: '',
         firmware_url: '',
-        github_token: import.meta.env.VITE_GITHUB_TOKEN || ''
+        preloader_url: '',
+        disable_verity: 'yes'
     });
 
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -20,19 +22,21 @@ export default function App() {
 
     const REPO_OWNER = 'Jefino9488';
     const REPO_NAME = 'repack';
-    const WORKFLOW_ID = 'repack.yml'; // Must match filename in .github/workflows/
+    const WORKFLOW_ID = 'repack.yml';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.rom_url || !formData.device_name) {
+        if (!formData.rom_url || !formData.device_name || !formData.compatible_list) {
             setStatus('error');
-            setMessage('ROM URL and Device Name are required.');
+            setMessage('ROM URL, Device Name, and Compatible List are required.');
             return;
         }
 
-        if (!formData.github_token) {
+        const token = import.meta.env.VITE_GITHUB_TOKEN;
+
+        if (!token) {
             setStatus('error');
-            setMessage('GitHub Token is required to trigger workflows. Enter one or set VITE_GITHUB_TOKEN.');
+            setMessage('GitHub Token is missing. Please configure VITE_GITHUB_TOKEN in your environment.');
             return;
         }
 
@@ -44,15 +48,18 @@ export default function App() {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/vnd.github.v3+json',
-                    'Authorization': `token ${formData.github_token}`,
+                    'Authorization': `token ${token}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    ref: 'main', // Or 'master' or the specific branch name. 'builder' in original repo, check later. Assumed 'main' or 'master' for new repo.
+                    ref: 'main',
                     inputs: {
                         rom_url: formData.rom_url,
                         device_name: formData.device_name,
-                        firmware_url: formData.firmware_url || ''
+                        compatible_list: formData.compatible_list,
+                        firmware_url: formData.firmware_url || '',
+                        preloader_url: formData.preloader_url || '',
+                        disable_verity: formData.disable_verity
                     }
                 })
             });
@@ -85,7 +92,7 @@ export default function App() {
                         <Terminal className="w-8 h-8 text-cyber-primary" />
                     </div>
                     <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyber-primary to-cyber-secondary filter drop-shadow-sm font-mono tracking-tight">
-                        XAGA REPACKER
+                        REPACKER
                     </h1>
                     <p className="text-cyber-muted text-sm uppercase tracking-widest">Fastboot ROM Builder</p>
                 </div>
@@ -105,7 +112,7 @@ export default function App() {
                                 </label>
                                 <input
                                     type="url"
-                                    placeholder="https://mirror.example.com/miui_...zip"
+                                    placeholder="https://mirror.example.com/miui_...zip | google drive link"
                                     className="w-full bg-cyber-dark border border-cyber-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-cyber-primary focus:ring-1 focus:ring-cyber-primary transition-all placeholder-gray-700"
                                     value={formData.rom_url}
                                     onChange={e => setFormData({ ...formData, rom_url: e.target.value })}
@@ -113,8 +120,9 @@ export default function App() {
                                 />
                             </div>
 
-                            {/* Device Name */}
+                            {/* Device Info Rows */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                {/* Device Name */}
                                 <div className="space-y-1">
                                     <label className="flex items-center text-sm font-medium text-cyber-primary/90">
                                         <Smartphone className="w-4 h-4 mr-2" />
@@ -122,7 +130,7 @@ export default function App() {
                                     </label>
                                     <input
                                         type="text"
-                                        placeholder="e.g. spes"
+                                        placeholder="e.g. xaga"
                                         className="w-full bg-cyber-dark border border-cyber-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-cyber-primary focus:ring-1 focus:ring-cyber-primary transition-all placeholder-gray-700"
                                         value={formData.device_name}
                                         onChange={e => setFormData({ ...formData, device_name: e.target.value })}
@@ -130,6 +138,25 @@ export default function App() {
                                     />
                                 </div>
 
+                                {/* Compatible List */}
+                                <div className="space-y-1">
+                                    <label className="flex items-center text-sm font-medium text-cyber-primary/90">
+                                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                                        Compatible List <span className="text-cyber-secondary ml-1">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. xaga,xagain,xaga_pro"
+                                        className="w-full bg-cyber-dark border border-cyber-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-cyber-primary focus:ring-1 focus:ring-cyber-primary transition-all placeholder-gray-700"
+                                        value={formData.compatible_list}
+                                        onChange={e => setFormData({ ...formData, compatible_list: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Additional URLs Row */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 {/* Firmware URL */}
                                 <div className="space-y-1">
                                     <label className="flex items-center text-sm font-medium text-gray-400">
@@ -144,52 +171,85 @@ export default function App() {
                                         onChange={e => setFormData({ ...formData, firmware_url: e.target.value })}
                                     />
                                 </div>
+
+                                {/* Preloader URL */}
+                                <div className="space-y-1">
+                                    <label className="flex items-center text-sm font-medium text-gray-400">
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Preloader URL (Optional)
+                                    </label>
+                                    <input
+                                        type="url"
+                                        placeholder="https://..."
+                                        className="w-full bg-cyber-dark border border-cyber-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-cyber-primary focus:ring-1 focus:ring-cyber-primary transition-all placeholder-gray-700"
+                                        value={formData.preloader_url}
+                                        onChange={e => setFormData({ ...formData, preloader_url: e.target.value })}
+                                    />
+                                </div>
                             </div>
 
-                            {/* GitHub Token */}
-                            <div className="space-y-1 pt-4 border-t border-cyber-border/50">
-                                <label className="flex items-center text-sm font-medium text-gray-400">
-                                    <Github className="w-4 h-4 mr-2" />
-                                    GitHub Token (PAT)
-                                </label>
-                                <p className="text-xs text-cyber-muted mb-2">Required to trigger workflow. Overrides env variable.</p>
-                                <input
-                                    type="password"
-                                    placeholder="github_pat_..."
-                                    className="w-full bg-cyber-dark border border-cyber-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-cyber-primary focus:ring-1 focus:ring-cyber-primary transition-all placeholder-gray-700"
-                                    value={formData.github_token}
-                                    onChange={e => setFormData({ ...formData, github_token: e.target.value })}
-                                />
-                            </div>
-
-                            {/* Status Message */}
-                            {status !== 'idle' && (
-                                <div className={cn(
-                                    "p-4 rounded-lg flex items-start gap-3 text-sm animate-in fade-in slide-in-from-top-2",
-                                    status === 'error' ? "bg-red-500/10 border border-red-500/30 text-red-400" :
-                                        status === 'success' ? "bg-green-500/10 border border-green-500/30 text-green-400" :
-                                            "bg-cyber-primary/10 border border-cyber-primary/30 text-cyber-primary"
-                                )}>
-                                    {status === 'error' ? <AlertCircle className="w-5 h-5 shrink-0" /> :
-                                        status === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0" /> :
-                                            <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
-                                    }
-                                    <div>
-                                        <p className="font-medium">{status === 'loading' ? 'Processing...' : status === 'success' ? 'Success' : 'Error'}</p>
-                                        <p className="text-white/70">{message}</p>
+                            {/* Disable Verity & Submit */}
+                            <div className="pt-2"> {/* Added spacing */}
+                                <div className="space-y-1 mb-6">
+                                    <label className="flex items-center text-sm font-medium text-gray-400 mb-2">
+                                        <AlertCircle className="w-4 h-4 mr-2" />
+                                        Disable Verity / Verification
+                                    </label>
+                                    <div className="flex gap-4">
+                                        <label className="flex items-center cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="disable_verity"
+                                                value="yes"
+                                                checked={formData.disable_verity === 'yes'}
+                                                onChange={e => setFormData({ ...formData, disable_verity: e.target.value })}
+                                                className="w-4 h-4 text-cyber-primary focus:ring-cyber-primary bg-cyber-dark border-cyber-border"
+                                            />
+                                            <span className="ml-2 text-sm text-gray-300">Yes (Default)</span>
+                                        </label>
+                                        <label className="flex items-center cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="disable_verity"
+                                                value="no"
+                                                checked={formData.disable_verity === 'no'}
+                                                onChange={e => setFormData({ ...formData, disable_verity: e.target.value })}
+                                                className="w-4 h-4 text-cyber-primary focus:ring-cyber-primary bg-cyber-dark border-cyber-border"
+                                            />
+                                            <span className="ml-2 text-sm text-gray-300">No</span>
+                                        </label>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Submit Button */}
-                            <button
-                                type="submit"
-                                disabled={status === 'loading'}
-                                className="w-full bg-gradient-to-r from-cyber-primary to-blue-600 hover:to-blue-500 text-black font-bold py-4 rounded-lg flex items-center justify-center gap-2 transform transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(0,229,255,0.3)] hover:shadow-[0_0_30px_rgba(0,229,255,0.5)]"
-                            >
-                                <Play className="w-5 h-5 fill-black" />
-                                TRIGGER BUILD
-                            </button>
+                                {/* Status Message */}
+                                {status !== 'idle' && (
+                                    <div className={cn(
+                                        "p-4 rounded-lg flex items-start gap-3 text-sm animate-in fade-in slide-in-from-top-2",
+                                        status === 'error' ? "bg-red-500/10 border border-red-500/30 text-red-400" :
+                                            status === 'success' ? "bg-green-500/10 border border-green-500/30 text-green-400" :
+                                                "bg-cyber-primary/10 border border-cyber-primary/30 text-cyber-primary"
+                                    )}>
+                                        {status === 'error' ? <AlertCircle className="w-5 h-5 shrink-0" /> :
+                                            status === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0" /> :
+                                                <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+                                        }
+                                        <div>
+                                            <p className="font-medium">{status === 'loading' ? 'Processing...' : status === 'success' ? 'Success' : 'Error'}</p>
+                                            <p className="text-white/70">{message}</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Submit Button */}
+                                <button
+                                    type="submit"
+                                    disabled={status === 'loading'}
+                                    className="w-full bg-gradient-to-r from-cyber-primary to-blue-600 hover:to-blue-500 text-black font-bold py-4 rounded-lg flex items-center justify-center gap-2 transform transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(0,229,255,0.3)] hover:shadow-[0_0_30px_rgba(0,229,255,0.5)]"
+                                >
+                                    <Play className="w-5 h-5 fill-black" />
+                                    TRIGGER BUILD
+                                </button>
+                            </div>
                         </form>
                     </div>
 

@@ -1,6 +1,17 @@
-@import "tailwindcss/base";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities";
+@import "tailwindcss";
+
+@theme {
+  --color-cyber-dark: #0a0a0a;
+  --color-cyber-panel: #121212;
+  --color-cyber-border: #2a2a2a;
+  --color-cyber-primary: #00e5ff;
+  --color-cyber-secondary: #ff0055;
+  --color-cyber-text: #e0e0e0;
+  --color-cyber-muted: #808080;
+
+  --font-mono: "JetBrains Mono", monospace;
+  --font-sans: Inter, sans-serif;
+}
 
 body {
   background-color: theme('colors.cyber.dark');
@@ -12,13 +23,16 @@ body {
 ::-webkit-scrollbar {
   width: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: theme('colors.cyber.dark');
 }
+
 ::-webkit-scrollbar-thumb {
   background: theme('colors.cyber.border');
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: theme('colors.cyber.primary');
 }
