@@ -66,7 +66,8 @@ jobs:
         run: |
           echo "Repacking ROM for $DEVICE_NAME"
           chmod +x "$GITHUB_WORKSPACE/scripts/repack.sh"
-          sudo -E bash "$GITHUB_WORKSPACE/scripts/repack.sh"
+          # Usage: repack.sh URL WORKSPACE DEVICE KEY FIRMWARE_URL
+          sudo -E bash "$GITHUB_WORKSPACE/scripts/repack.sh" "$ROM_URL" "$GITHUB_WORKSPACE" "$DEVICE_NAME" "" "$FIRMWARE_URL"
           
           if [ $? -ne 0 ]; then
             echo "Error: Build failed."

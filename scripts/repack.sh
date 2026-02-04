@@ -11,6 +11,16 @@ COMPATIBLE="${COMPATIBLE_LIST}"
 PRELOADER_URL="${PRELOADER_URL:-}"
 DISABLE_VERITY="${DISABLE_VERITY:-yes}"
 
+# Backwards compatibility: Check for positional arguments if env vars are missing
+if [ -z "${URL}" ] && [ -n "$1" ]; then
+    echo "Info: Using positional arguments (backward compatibility)"
+    URL="$1"
+    # $2 is workspace, usually already correct or set
+    [ -n "$3" ] && DEVICE="$3"
+    # $4 was unused key
+    [ -n "$5" ] && FIRMWARE_URL="$5"
+fi
+
 RED='\033[1;31m'
 YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
