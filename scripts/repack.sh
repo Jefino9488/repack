@@ -35,7 +35,7 @@ download_file() {
         echo -e "${BLUE}- Detected Google Drive link, using gdown..."
         cwd_bkp=$(pwd)
         cd "$directory"
-        gdown -O "$output" "$url"
+        python3 -m gdown -O "$output" "$url"
         local ret=$?
         cd "$cwd_bkp"
         return $ret
