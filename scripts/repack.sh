@@ -17,6 +17,15 @@ BLUE='\033[1;34m'
 GREEN='\033[1;32m'
 NC='\033[0m'
 
+# Debug: Print environment variables
+echo -e "${YELLOW}=== Environment Variables ===${NC}"
+echo -e "ROM_URL: ${ROM_URL:-EMPTY}"
+echo -e "URL: ${URL:-EMPTY}"
+echo -e "DEVICE_NAME: ${DEVICE_NAME:-EMPTY}"
+echo -e "DEVICE: ${DEVICE:-EMPTY}"
+echo -e "GITHUB_WORKSPACE: ${GITHUB_WORKSPACE:-EMPTY}"
+echo -e "${YELLOW}==============================${NC}"
+
 download_and_extract_firmware() {
     if [ -n "${FIRMWARE_URL}" ]; then
         cd "${GITHUB_WORKSPACE}"
@@ -57,7 +66,25 @@ download_and_extract_firmware() {
 
 download_recovery_rom() {
     echo -e "${BLUE}- Starting downloading recovery rom"
+    
+    # Debug: Show the URL being used
+    echo -e "${BLUE}- URL: ${URL}"
+    
+    # Validate URL is not empty
+    if [ -z "${URL}" ]; then
+        echo -e "${RED}- Error: ROM_URL is empty!"
+        echo -e "${RED}- Please provide a valid ROM URL."
+        exit 1
+    fi
+    
+    # Download with proper quoting
     aria2c -x16 -j"$(nproc)" -U "Mozilla/5.0" -d "${GITHUB_WORKSPACE}" -o "recovery_rom.zip" "${URL}"
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}- Error: Failed to download recovery ROM"
+        exit 1
+    fi
+    
     echo -e "${GREEN}- Downloaded recovery rom"
 }
 
