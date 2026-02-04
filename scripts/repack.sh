@@ -2,22 +2,17 @@
 
 set -e
 
-# ========================================================
-# Environment Variables (from GitHub Actions workflow)
-# ========================================================
+# Environment Variables
 URL="${ROM_URL}"
 DEVICE="${DEVICE_NAME}"
 COMPATIBLE="${COMPATIBLE_LIST}"
 PRELOADER_URL="${PRELOADER_URL:-}"
 DISABLE_VERITY="${DISABLE_VERITY:-yes}"
 
-# Backwards compatibility: Check for positional arguments if env vars are missing
+# Backwards compatibility
 if [ -z "${URL}" ] && [ -n "$1" ]; then
-    echo "Info: Using positional arguments (backward compatibility)"
     URL="$1"
-    # $2 is workspace, usually already correct or set
     [ -n "$3" ] && DEVICE="$3"
-    # $4 was unused key
     [ -n "$5" ] && FIRMWARE_URL="$5"
 fi
 
@@ -27,20 +22,36 @@ BLUE='\033[1;34m'
 GREEN='\033[1;32m'
 NC='\033[0m'
 
-# Debug: Print environment variables
-echo -e "${YELLOW}=== Environment Variables ===${NC}"
-echo -e "ROM_URL: ${ROM_URL:-EMPTY}"
-echo -e "URL: ${URL:-EMPTY}"
-echo -e "DEVICE_NAME: ${DEVICE_NAME:-EMPTY}"
-echo -e "DEVICE: ${DEVICE:-EMPTY}"
-echo -e "GITHUB_WORKSPACE: ${GITHUB_WORKSPACE:-EMPTY}"
-echo -e "${YELLOW}==============================${NC}"
+# Helper function to download files
+download_file() {
+    local url="$1"
+    local output="$2"
+    local directory="${3:-$GITHUB_WORKSPACE}"
+
+    echo -e "${YELLOW}- Downloading ${output}..."
+    
+    # Check if URL is Google Drive
+    if [[ "$url" =~ "drive.google.com" ]]; then
+        echo -e "${BLUE}- Detected Google Drive link, using gdown..."
+        cwd_bkp=$(pwd)
+        cd "$directory"
+        gdown -O "$output" "$url"
+        local ret=$?
+        cd "$cwd_bkp"
+        return $ret
+    else
+        echo -e "${BLUE}- Using aria2c..."
+        aria2c -x16 -j"$(nproc)" -U "Mozilla/5.0" -d "$directory" -o "$output" "$url"
+        return $?
+    fi
+}
 
 download_and_extract_firmware() {
     if [ -n "${FIRMWARE_URL}" ]; then
         cd "${GITHUB_WORKSPACE}"
-        echo -e "${YELLOW}- Downloading firmware..."
-        aria2c -x16 -j"$(nproc)" -U "Mozilla/5.0" -o "firmware.zip" "${FIRMWARE_URL}"
+        
+        # Use new download helper
+        download_file "${FIRMWARE_URL}" "firmware.zip" "${GITHUB_WORKSPACE}"
         if [ $? -ne 0 ]; then
             exit 1
         fi
@@ -77,18 +88,12 @@ download_and_extract_firmware() {
 download_recovery_rom() {
     echo -e "${BLUE}- Starting downloading recovery rom"
     
-    # Debug: Show the URL being used
-    echo -e "${BLUE}- URL: ${URL}"
-    
-    # Validate URL is not empty
     if [ -z "${URL}" ]; then
         echo -e "${RED}- Error: ROM_URL is empty!"
-        echo -e "${RED}- Please provide a valid ROM URL."
         exit 1
     fi
     
-    # Download with proper quoting
-    aria2c -x16 -j"$(nproc)" -U "Mozilla/5.0" -d "${GITHUB_WORKSPACE}" -o "recovery_rom.zip" "${URL}"
+    download_file "${URL}" "recovery_rom.zip" "${GITHUB_WORKSPACE}"
     
     if [ $? -ne 0 ]; then
         echo -e "${RED}- Error: Failed to download recovery ROM"
@@ -132,9 +137,29 @@ handle_preloader() {
         echo -e "${GREEN}- Found preloader in ROM: ${PRELOADER_NAME}"
     elif [ -n "$PRELOADER_URL" ]; then
         echo -e "${YELLOW}- Downloading preloader from URL..."
-        # Extract filename from URL
-        PRELOADER_NAME=$(basename "$PRELOADER_URL")
-        aria2c -x16 -j"$(nproc)" -U "Mozilla/5.0" -d "${GITHUB_WORKSPACE}/${DEVICE}/images" -o "$PRELOADER_NAME" "$PRELOADER_URL"
+        
+        # Logic to determine filename:
+        # 1. Try to get basename if it looks like a file (has extension)
+        # 2. Otherwise default to preloader.bin to avoid saving as ID (like LxZ6FyrC)
+        
+        local url_base
+        url_base=$(basename "$PRELOADER_URL")
+        
+        if [[ "$url_base" == *.* ]]; then
+             PRELOADER_NAME="$url_base"
+        else
+             PRELOADER_NAME="preloader.bin"
+        fi
+        
+        echo -e "${BLUE}- Determined preloader name: ${PRELOADER_NAME}"
+
+        download_file "$PRELOADER_URL" "$PRELOADER_NAME" "${GITHUB_WORKSPACE}/${DEVICE}/images"
+        
+        if [ $? -ne 0 ]; then
+             echo -e "${RED}- Failed to download preloader!"
+             exit 1
+        fi
+
         echo -e "${GREEN}- Downloaded preloader: ${PRELOADER_NAME}"
     else
         PRELOADER_NAME=""

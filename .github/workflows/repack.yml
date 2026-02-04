@@ -53,7 +53,8 @@ jobs:
           sudo apt-get clean
           sudo rm -rf /var/lib/apt/lists/*
           sudo apt-get update
-          sudo apt-get install -y python3 aria2 p7zip-full zstd dos2unix libxml2-utils
+          sudo apt-get install -y python3 python3-pip aria2 p7zip-full zstd dos2unix libxml2-utils
+          pip3 install gdown
 
       - name: Run Repack Script
         env:
@@ -74,18 +75,23 @@ jobs:
             exit 1
           fi
 
-      - name: Display Download Link
+      - name: Generate Release Info
+        id: release_info
         run: |
+          echo "TAG_NAME=${{ inputs.device_name }}-$(date +%Y%m%d-%H%M)" >> $GITHUB_ENV
+          # Prepend explanatory text to the link file for the body
           if [ -f "$GITHUB_WORKSPACE/gofile_link.txt" ]; then
-            echo "## 🚀 Download Link" >> $GITHUB_STEP_SUMMARY
-            echo "Your file is ready: [Download from Gofile.io]($(cat $GITHUB_WORKSPACE/gofile_link.txt))" >> $GITHUB_STEP_SUMMARY
-            echo "Direct link: $(cat $GITHUB_WORKSPACE/gofile_link.txt)" >> $GITHUB_STEP_SUMMARY
+             echo -e "Automated build.\nDownload your ROM here: $(cat $GITHUB_WORKSPACE/gofile_link.txt)" > release_notes.txt
+          else
+             echo "Automated build. Download link unavailable." > release_notes.txt
           fi
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+      - name: Create Release
+        uses: ncipollo/release-action@v1
         with:
-          name: ${{ inputs.device_name }}_fastboot
-          path: ${{ github.workspace }}/zip/${{ inputs.device_name }}_fastboot.zip
-          compression-level: 0
-          retention-days: 1
+          tag: ${{ env.TAG_NAME }}
+          name: "Fastboot ROM for ${{ inputs.device_name }}"
+          bodyFile: release_notes.txt
+          token: ${{ secrets.GITHUB_TOKEN }}
+          allowUpdates: true
+          makeLatest: true
